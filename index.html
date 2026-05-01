@@ -76,7 +76,7 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
 .card-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;}
 .card-title{font-size:13px;font-weight:600;}
 .card-sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;}
-.chart-wrap{position:relative;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
 .beat-badge{display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:rgba(5,217,139,.07);border:1px solid rgba(5,217,139,.18);color:var(--green);font-family:var(--mono);font-size:10px;padding:5px 12px;border-radius:20px;}
 .beat-badge::before{content:'▲';font-size:8px;}
 .news-list{display:flex;flex-direction:column;gap:8px;}
@@ -110,9 +110,9 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
     <button onclick="doSearch()">SEARCH</button>
   </div>
   <div class="header-tabs">
-    <button class="htab on" id="htab-overview" onclick="switchRightTab('overview',this)">Overview</button>
-    <button class="htab" id="htab-earnings" onclick="switchRightTab('earnings',this)">Earnings</button>
-    <button class="htab" id="htab-news" onclick="switchRightTab('news',this)">News</button>
+    <button class="htab on" onclick="switchTab('overview',this)">Overview</button>
+    <button class="htab" onclick="switchTab('earnings',this)">Earnings</button>
+    <button class="htab" onclick="switchTab('news',this)">News</button>
   </div>
   <div class="mkt-strip">
     <span class="ms-item"><b>SPY</b><span id="ms-SPY">…</span></span>
@@ -122,7 +122,8 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
 </header>
 
 <div class="app-body">
-  <div class="left" id="leftPanel">
+  <!-- LEFT -->
+  <div class="left">
     <div class="l-empty" id="lEmpty">
       <div class="l-empty-icon">📊</div>
       <div class="l-empty-title">No stock loaded</div>
@@ -141,17 +142,15 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
       </div>
       <div class="l-section">
         <div class="price-big" id="priceBig">—</div>
-        <div class="price-chg">
-          <span id="priceChg">—</span>
-          <span id="priceChgPct">—</span>
-        </div>
+        <div class="price-chg"><span id="priceChg">—</span><span id="priceChgPct">—</span></div>
         <div class="range-row">
-          <button class="rbtn" onclick="changeRange('D',1,this)">1D</button>
+          <button class="rbtn" onclick="changeRange('60',1,this)">1D</button>
           <button class="rbtn on" onclick="changeRange('D',5,this)">5D</button>
           <button class="rbtn" onclick="changeRange('D',30,this)">1M</button>
           <button class="rbtn" onclick="changeRange('D',180,this)">6M</button>
           <button class="rbtn" onclick="changeRange('D',365,this)">1Y</button>
-          <button class="rbtn" onclick="changeRange('M',60,this)">5Y</button>
+          <button class="rbtn" onclick="changeRange('W',365*3,this)">3Y</button>
+          <button class="rbtn" onclick="changeRange('M',365*5,this)">5Y</button>
         </div>
       </div>
       <div class="l-section">
@@ -178,9 +177,7 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
         <div class="rating-row"><span class="rl">Hold</span><div class="rbar"><div class="rbar-fill" id="rH" style="background:var(--yellow)"></div></div><span class="rpct" id="rHp" style="color:var(--yellow)">0%</span></div>
         <div class="rating-row"><span class="rl">Sell</span><div class="rbar"><div class="rbar-fill" id="rS" style="background:var(--red)"></div></div><span class="rpct dn" id="rSp">0%</span></div>
         <div class="rating-row"><span class="rl">Strong Sell</span><div class="rbar"><div class="rbar-fill" id="rSS" style="background:#ff0032"></div></div><span class="rpct dn" id="rSSp">0%</span></div>
-        <div style="margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--muted)">
-          Price Target: <span id="rTarget" style="color:var(--green);font-weight:600">—</span>
-        </div>
+        <div style="margin-top:10px;font-family:var(--mono);font-size:10px;color:var(--muted)">Price Target: <span id="rTarget" style="color:var(--green);font-weight:600">—</span></div>
       </div>
       <div class="l-section">
         <div class="sl">About</div>
@@ -192,12 +189,15 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
     </div>
   </div>
 
+  <!-- RIGHT -->
   <div class="right">
     <div class="panel-tabs">
-      <button class="ptab on" onclick="switchRightTab('overview',this)">Price Chart</button>
-      <button class="ptab" onclick="switchRightTab('earnings',this)">Earnings</button>
-      <button class="ptab" onclick="switchRightTab('news',this)">News</button>
+      <button class="ptab on" id="pt-overview" onclick="switchTab('overview',this)">Price Chart</button>
+      <button class="ptab" id="pt-earnings" onclick="switchTab('earnings',this)">Earnings</button>
+      <button class="ptab" id="pt-news" onclick="switchTab('news',this)">News</button>
     </div>
+
+    <!-- OVERVIEW TAB -->
     <div class="content-area" id="tabOverview">
       <div class="r-empty" id="rEmpty">
         <div class="r-empty-icon">🔭</div>
@@ -205,6 +205,7 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
         <div class="r-empty-sub">Enter any ticker symbol above.</div>
       </div>
       <div id="overviewCharts" style="display:none;flex-direction:column;gap:18px;">
+        <!-- Price chart -->
         <div class="card">
           <div class="card-hdr">
             <div>
@@ -212,19 +213,32 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
               <div class="card-sub" id="priceChartSub">—</div>
             </div>
           </div>
-          <div class="chart-wrap" style="height:260px"><canvas id="cPrice"></canvas></div>
+          <div style="position:relative;height:260px;">
+            <canvas id="cPrice"></canvas>
+          </div>
+        </div>
+        <!-- Revenue + EPS side by side -->
+        <div class="two-col">
+          <div class="card">
+            <div class="card-hdr"><div><div class="card-title">Quarterly Revenue</div><div class="card-sub">Last 8 quarters · $B</div></div></div>
+            <div style="position:relative;height:180px;"><canvas id="cRev"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-hdr"><div><div class="card-title">EPS — Actual vs Estimate</div><div class="card-sub" id="epsBeatSub">—</div></div></div>
+            <div style="position:relative;height:180px;"><canvas id="cEps"></canvas></div>
+            <div class="beat-badge" id="beatBadge" style="display:none"></div>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- EARNINGS TAB -->
     <div class="content-area" id="tabEarnings" style="display:none">
       <div class="card">
         <div class="card-hdr">
-          <div>
-            <div class="card-title">EPS — Actual vs Estimate</div>
-            <div class="card-sub" id="earnSub">—</div>
-          </div>
+          <div><div class="card-title">EPS History — Actual vs Estimate</div><div class="card-sub" id="earnSub">—</div></div>
         </div>
-        <div class="chart-wrap" style="height:260px"><canvas id="cEarnBig"></canvas></div>
+        <div style="position:relative;height:260px;"><canvas id="cEarnBig"></canvas></div>
         <div class="beat-badge" id="beatBadge2" style="display:none;margin-top:12px"></div>
       </div>
       <div class="card">
@@ -237,6 +251,8 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
         </div>
       </div>
     </div>
+
+    <!-- NEWS TAB -->
     <div class="content-area" id="tabNews" style="display:none">
       <div class="news-list" id="newsList">
         <div class="r-empty"><div class="r-empty-sub">Search a stock to see news.</div></div>
@@ -246,42 +262,67 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
 </div>
 
 <script>
-let ticker=null, curResolution='D', curDays=5, charts={};
+let ticker=null, curRes='D', curDays=5, charts={};
 
+// ── SEARCH ──
 document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
-function doSearch(){const v=document.getElementById('searchInput').value.trim().toUpperCase();if(!v)return;ticker=v;loadAll(v);}
+function doSearch(){
+  const v=document.getElementById('searchInput').value.trim().toUpperCase();
+  if(!v)return; ticker=v; loadAll(v);
+}
 
-async function fh(endpoint){const r=await fetch('/api/fh?endpoint='+encodeURIComponent(endpoint));if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+// ── API ──
+async function fh(endpoint){
+  const r=await fetch('/api/fh?endpoint='+encodeURIComponent(endpoint));
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
 
+// ── LOAD ALL ──
 async function loadAll(sym){
   showLoading();
   try{
-    const [quote,profile,metrics,rec,earnings,news]=await Promise.allSettled([
+    const [quote,profile,metrics,rec,earnings,news,candle]=await Promise.allSettled([
       fh('/quote?symbol='+sym),
       fh('/stock/profile2?symbol='+sym),
       fh('/stock/metric?symbol='+sym+'&metric=all'),
       fh('/stock/recommendation?symbol='+sym),
       fh('/stock/earnings?symbol='+sym+'&limit=12'),
-      fh('/company-news?symbol='+sym+'&from='+daysAgo(30)+'&to='+today())
+      fh('/company-news?symbol='+sym+'&from='+daysAgo(30)+'&to='+today()),
+      fh('/stock/candle?symbol='+sym+'&resolution=D&from='+(Math.floor(Date.now()/1000)-5*86400)+'&to='+Math.floor(Date.now()/1000))
     ]);
+
     hideLoading();
     document.getElementById('rEmpty').style.display='none';
     document.getElementById('overviewCharts').style.display='flex';
     document.getElementById('lEmpty').style.display='none';
     document.getElementById('lData').style.display='block';
+
     const q=quote.status==='fulfilled'?quote.value:{};
     const p=profile.status==='fulfilled'?profile.value:{};
-    const m=metrics.status==='fulfilled'?metrics.value?.metric||{}:{};
-    const r=rec.status==='fulfilled'&&rec.value?.length?rec.value[0]:{};
-    const e=earnings.status==='fulfilled'?earnings.value||[]:[];
-    const n=news.status==='fulfilled'?news.value||[]:[];
+    const m=metrics.status==='fulfilled'?(metrics.value?.metric||{}):{};
+    const r=rec.status==='fulfilled'&&Array.isArray(rec.value)&&rec.value.length?rec.value[0]:{};
+    const e=earnings.status==='fulfilled'&&Array.isArray(earnings.value)?earnings.value:[];
+    const n=news.status==='fulfilled'&&Array.isArray(news.value)?news.value:[];
+    const c=candle.status==='fulfilled'?candle.value:null;
+
     renderLeft(q,p,m,r,sym);
-    loadPriceChart(sym,'D',5);
+    if(c&&c.s!=='no_data'&&c.c&&c.c.length>0){
+      renderPriceChart(c,sym,'D',5);
+    } else {
+      // fallback: try wider range
+      loadPriceChart(sym,'D',30);
+    }
     renderEarnings(e);
     renderNews(n);
-  }catch(err){hideLoading();showErr('Failed: '+err.message);}
+  }catch(err){
+    hideLoading();
+    showErr('Failed: '+err.message);
+    console.error(err);
+  }
 }
 
+// ── LEFT ──
 function renderLeft(q,p,m,r,sym){
   sv('coIcon',sym.slice(0,2));
   sv('coName',p.name||sym);
@@ -293,7 +334,10 @@ function renderLeft(q,p,m,r,sym){
   document.getElementById('priceChg').className=up?'up':'dn';
   document.getElementById('priceChgPct').textContent='('+(up?'+':'')+fmt2(chPct)+'%)';
   document.getElementById('priceChgPct').className=up?'up':'dn';
-  sv('sPrice','$'+fmt2(cp));sv('sOpen','$'+fmt2(q.o));sv('sHigh','$'+fmt2(q.h));sv('sLow','$'+fmt2(q.l));
+  sv('sPrice','$'+fmt2(cp));
+  sv('sOpen','$'+fmt2(q.o));
+  sv('sHigh','$'+fmt2(q.h));
+  sv('sLow','$'+fmt2(q.l));
   sv('s52H',m['52WeekHigh']?'$'+fmt2(m['52WeekHigh']):'—');
   sv('s52L',m['52WeekLow']?'$'+fmt2(m['52WeekLow']):'—');
   sv('sMktCap',m.marketCapitalization?fmtBig(m.marketCapitalization*1e6):'—');
@@ -303,7 +347,8 @@ function renderLeft(q,p,m,r,sym){
   sv('sDiv',m.dividendYieldIndicatedAnnual?fmt2(m.dividendYieldIndicatedAnnual)+'%':'N/A');
   sv('sShares',m.sharesOutstanding?fmtBig(m.sharesOutstanding*1e6,false):'—');
   const sb=r.strongBuy||0,b=r.buy||0,h=r.hold||0,s=r.sell||0,ss=r.strongSell||0,tot=sb+b+h+s+ss||1;
-  setBar('rSB','rSBp',sb,tot);setBar('rB','rBp',b,tot);setBar('rH','rHp',h,tot);setBar('rS','rSp',s,tot);setBar('rSS','rSSp',ss,tot);
+  setBar('rSB','rSBp',sb,tot);setBar('rB','rBp',b,tot);setBar('rH','rHp',h,tot);
+  setBar('rS','rSp',s,tot);setBar('rSS','rSSp',ss,tot);
   sv('rTarget',m.targetPrice?'$'+fmt2(m.targetPrice):'—');
   sv('aboutText',(p.description||'No description available.').slice(0,300)+'…');
   sv('aIndustry',p.finnhubIndustry||'—');
@@ -312,33 +357,49 @@ function renderLeft(q,p,m,r,sym){
   if(p.weburl){wa.href=p.weburl;wa.textContent=p.weburl.replace('https://','').replace('www.','');}
 }
 
+// ── PRICE CHART ──
 async function loadPriceChart(sym,resolution,days){
-  curResolution=resolution;curDays=days;
+  curRes=resolution; curDays=days;
   const from=Math.floor(Date.now()/1000)-days*86400;
   const to=Math.floor(Date.now()/1000);
   try{
     const data=await fh('/stock/candle?symbol='+sym+'&resolution='+resolution+'&from='+from+'&to='+to);
-    if(!data||data.s==='no_data'||!data.c)return;
-    renderPriceChart(data,sym,resolution);
-  }catch(e){console.error(e);}
+    if(!data||data.s==='no_data'||!data.c||data.c.length===0){
+      sv('priceChartSub','No price data available for this range');
+      return;
+    }
+    renderPriceChart(data,sym,resolution,days);
+  }catch(e){console.error('Chart error:',e);}
 }
 
-function renderPriceChart(data,sym,resolution){
+function renderPriceChart(data,sym,resolution,days){
+  if(!data||!data.t||!data.c)return;
   const labels=data.t.map(ts=>{
     const d=new Date(ts*1000);
-    if(resolution==='D'&&curDays<=5)return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    if(resolution==='D')return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
+    if(resolution==='60')return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+    if(days&&days<=10)return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    if(days&&days<=180)return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
     return d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
   });
-  const vals=data.c,first=vals[0]||0,last=vals[vals.length-1]||0,up=last>=first,col=up?'#05d98b':'#f03e5f';
+  const vals=data.c;
+  const first=vals[0]||0,last=vals[vals.length-1]||0,up=last>=first;
+  const col=up?'#05d98b':'#f03e5f';
   sv('priceChartTitle',sym+' — Price History');
-  sv('priceChartSub',labels[0]+' → '+labels[labels.length-1]+'  ·  '+vals.length+' data points');
-  const ctx=document.getElementById('cPrice').getContext('2d');
-  const grad=ctx.createLinearGradient(0,0,0,260);
-  grad.addColorStop(0,up?'rgba(5,217,139,0.2)':'rgba(240,62,95,0.2)');
-  grad.addColorStop(1,'rgba(0,0,0,0)');
+  sv('priceChartSub',labels[0]+' → '+labels[labels.length-1]+' · '+vals.length+' points');
+
+  // Must destroy before getting new context
   destroyChart('cPrice');
-  charts['cPrice']=new Chart(ctx,{type:'line',data:{labels,datasets:[{data:vals,borderColor:col,backgroundColor:grad,borderWidth:1.5,pointRadius:0,fill:true,tension:0.2}]},options:baseOpts()});
+  const canvas=document.getElementById('cPrice');
+  const ctx=canvas.getContext('2d');
+  const grad=ctx.createLinearGradient(0,0,0,260);
+  grad.addColorStop(0,up?'rgba(5,217,139,0.22)':'rgba(240,62,95,0.22)');
+  grad.addColorStop(1,'rgba(0,0,0,0)');
+
+  charts['cPrice']=new Chart(ctx,{
+    type:'line',
+    data:{labels,datasets:[{data:vals,borderColor:col,backgroundColor:grad,borderWidth:1.5,pointRadius:0,fill:true,tension:0.2,spanGaps:true}]},
+    options:baseOpts()
+  });
 }
 
 function changeRange(resolution,days,btn){
@@ -347,68 +408,163 @@ function changeRange(resolution,days,btn){
   if(ticker)loadPriceChart(ticker,resolution,days);
 }
 
+// ── EARNINGS ──
 function renderEarnings(earnings){
-  if(!earnings.length)return;
+  if(!earnings||!earnings.length){
+    sv('earnSub','No earnings data');
+    sv('epsBeatSub','No earnings data');
+    return;
+  }
   const sorted=[...earnings].sort((a,b)=>new Date(a.period)-new Date(b.period));
   const labels=sorted.map(e=>e.period||'');
-  const est=sorted.map(e=>e.estimate??null);
-  const act=sorted.map(e=>e.actual??null);
-  let beats=0;
-  sorted.forEach((e,i)=>{if((act[i]??-Infinity)>=(est[i]??Infinity))beats++;});
-  const beatTxt='Beat estimates '+beats+' of '+sorted.length+' quarters';
-  sv('earnSub',beatTxt);
-  const bb2=document.getElementById('beatBadge2');
-  bb2.textContent=beatTxt;bb2.style.display=beats>0?'inline-flex':'none';
-  const actColors=act.map((a,i)=>(a??-Infinity)>=(est[i]??Infinity)?'rgba(5,217,139,0.75)':'rgba(240,62,95,0.75)');
-  const actBorder=act.map((a,i)=>(a??-Infinity)>=(est[i]??Infinity)?'#05d98b':'#f03e5f');
+  const est=sorted.map(e=>typeof e.estimate==='number'?e.estimate:null);
+  const act=sorted.map(e=>typeof e.actual==='number'?e.actual:null);
+
+  let beats=0,total=0;
+  sorted.forEach((e,i)=>{
+    if(act[i]!==null&&est[i]!==null){total++;if(act[i]>=est[i])beats++;}
+  });
+  const beatTxt='Beat estimates '+beats+' of '+total+' quarters';
+  sv('earnSub',beatTxt); sv('epsBeatSub',beatTxt);
+  ['beatBadge','beatBadge2'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.textContent=beatTxt; el.style.display=beats>0?'inline-flex':'none';
+  });
+
+  const actColors=act.map((a,i)=>a!==null&&est[i]!==null&&a>=est[i]?'rgba(5,217,139,0.75)':'rgba(240,62,95,0.75)');
+  const actBorder=act.map((a,i)=>a!==null&&est[i]!==null&&a>=est[i]?'#05d98b':'#f03e5f');
+
+  const datasets=[
+    {label:'Estimate',data:est,backgroundColor:'rgba(245,197,24,0.3)',borderColor:'#f5c518',borderWidth:1,borderRadius:3},
+    {label:'Actual',data:act,backgroundColor:actColors,borderColor:actBorder,borderWidth:1,borderRadius:3}
+  ];
+
+  // Mini EPS (overview)
+  destroyChart('cEps');
+  charts['cEps']=new Chart(document.getElementById('cEps').getContext('2d'),{
+    type:'bar',data:{labels,datasets},options:barOpts('$',true)
+  });
+
+  // Big EPS (earnings tab)
   destroyChart('cEarnBig');
   charts['cEarnBig']=new Chart(document.getElementById('cEarnBig').getContext('2d'),{
-    type:'bar',
-    data:{labels,datasets:[
-      {label:'Estimate',data:est,backgroundColor:'rgba(245,197,24,0.3)',borderColor:'#f5c518',borderWidth:1,borderRadius:3},
-      {label:'Actual',data:act,backgroundColor:actColors,borderColor:actBorder,borderWidth:1,borderRadius:3}
-    ]},
-    options:barOpts('$',true)
+    type:'bar',data:{labels,datasets},options:barOpts('$',true)
   });
+
+  // Revenue chart - use earnings endpoint quarterly financials
+  // We'll use Finnhub financials for revenue
+  if(ticker){
+    fh('/stock/financials-reported?symbol='+ticker+'&freq=quarterly').then(fin=>{
+      const reports=(fin.data||[]).slice(0,8).reverse();
+      const revLabels=reports.map(r=>r.startDate||'');
+      const revData=reports.map(r=>{
+        const inc=r.report?.ic||[];
+        const rev=inc.find(i=>i.concept==='Revenues'||i.concept==='RevenueFromContractWithCustomerExcludingAssessedTax'||i.concept==='SalesRevenueNet');
+        return rev?(rev.value/1e9):0;
+      });
+      if(revData.some(v=>v>0)){
+        destroyChart('cRev');
+        charts['cRev']=new Chart(document.getElementById('cRev').getContext('2d'),{
+          type:'bar',
+          data:{labels:revLabels,datasets:[{label:'Revenue $B',data:revData,backgroundColor:'rgba(47,139,255,0.5)',borderColor:'#2f8bff',borderWidth:1,borderRadius:4}]},
+          options:barOpts('$B')
+        });
+      }
+    }).catch(()=>{});
+  }
+
+  // Earnings table
   const tbody=document.getElementById('earnTbody');
   tbody.innerHTML='';
   [...sorted].reverse().forEach(e=>{
     const a=e.actual,est2=e.estimate;
     const surp=(a!=null&&est2!=null&&est2!==0)?((a-est2)/Math.abs(est2)*100).toFixed(1):null;
     const beat=a!=null&&est2!=null&&a>=est2;
-    tbody.innerHTML+=`<tr><td style="font-weight:600">${e.period||'—'}</td><td>${est2!=null?'$'+fmt2(est2):'—'}</td><td class="${beat?'beat':'miss'}">${a!=null?'$'+fmt2(a):'—'}</td><td class="${surp>0?'beat':'miss'}">${surp!=null?(surp>0?'+':'')+surp+'%':'—'}</td><td><span class="${beat?'badge-beat':'badge-miss'}">${beat?'BEAT':'MISS'}</span></td></tr>`;
+    tbody.innerHTML+=`<tr>
+      <td style="font-weight:600">${e.period||'—'}</td>
+      <td>${est2!=null?'$'+fmt2(est2):'—'}</td>
+      <td class="${beat?'beat':'miss'}">${a!=null?'$'+fmt2(a):'—'}</td>
+      <td class="${surp!==null?(parseFloat(surp)>0?'beat':'miss'):''}">${surp!==null?(parseFloat(surp)>0?'+':'')+surp+'%':'—'}</td>
+      <td><span class="${beat?'badge-beat':'badge-miss'}">${beat?'BEAT':'MISS'}</span></td>
+    </tr>`;
   });
 }
 
+// ── NEWS ──
 function renderNews(news){
-  if(!news.length){document.getElementById('newsList').innerHTML='<div class="r-empty"><div class="r-empty-sub">No news found.</div></div>';return;}
-  document.getElementById('newsList').innerHTML=news.slice(0,20).map(n=>`<div class="news-card"><a href="${n.url}" target="_blank" rel="noopener"><div class="news-ttl">${n.headline}</div><div class="news-meta">${n.source||''} · ${timeAgo(n.datetime)}</div></a></div>`).join('');
+  if(!news||!news.length){
+    document.getElementById('newsList').innerHTML='<div class="r-empty"><div class="r-empty-sub">No news found.</div></div>';
+    return;
+  }
+  document.getElementById('newsList').innerHTML=news.slice(0,20).map(n=>`
+    <div class="news-card">
+      <a href="${n.url||'#'}" target="_blank" rel="noopener">
+        <div class="news-ttl">${n.headline||'No title'}</div>
+        <div class="news-meta">${n.source||''} · ${timeAgo(n.datetime)}</div>
+      </a>
+    </div>`).join('');
 }
 
+// ── MARKET STRIP ──
 async function loadStrip(){
   for(const [sym,id] of [['SPY','ms-SPY'],['QQQ','ms-QQQ'],['BINANCE:BTCUSDT','ms-BTC']]){
-    try{const d=await fh('/quote?symbol='+sym);const ch=d.c-d.pc;const pct=d.pc?(ch/d.pc*100).toFixed(2):'0.00';const up=ch>=0;document.getElementById(id).innerHTML='<span class="'+(up?'up':'dn')+'">'+(up?'+':'')+pct+'%</span>';}catch(e){document.getElementById(id).textContent='—';}
+    try{
+      const d=await fh('/quote?symbol='+sym);
+      const ch=d.c-d.pc,pct=d.pc?(ch/d.pc*100).toFixed(2):'0.00',up=ch>=0;
+      document.getElementById(id).innerHTML='<span class="'+(up?'up':'dn')+'">'+(up?'+':'')+pct+'%</span>';
+    }catch(e){document.getElementById(id).textContent='—';}
   }
 }
-loadStrip();setInterval(loadStrip,60000);
+loadStrip(); setInterval(loadStrip,60000);
 
-function switchRightTab(tab,btn){
-  document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('on'));
-  document.querySelectorAll('.htab').forEach(b=>b.classList.remove('on'));
+// ── TABS ──
+function switchTab(tab,btn){
+  document.querySelectorAll('.ptab,.htab').forEach(b=>b.classList.remove('on'));
   if(btn)btn.classList.add('on');
-  document.getElementById('htab-'+tab)?.classList.add('on');
   ['tabOverview','tabEarnings','tabNews'].forEach(id=>document.getElementById(id).style.display='none');
   const map={overview:'tabOverview',earnings:'tabEarnings',news:'tabNews'};
-  const el=document.getElementById(map[tab]);if(el)el.style.display='flex';
+  const el=document.getElementById(map[tab]);
+  if(el)el.style.display='flex';
 }
 
-function baseOpts(){return{responsive:true,maintainAspectRatio:false,animation:{duration:600,easing:'easeInOutQuart'},plugins:{legend:{display:false},tooltip:{backgroundColor:'#131920',borderColor:'rgba(255,255,255,0.08)',borderWidth:1,titleColor:'#dde4ee',bodyColor:'#556070',titleFont:{family:"'IBM Plex Mono',monospace",size:11},bodyFont:{family:"'IBM Plex Mono',monospace",size:11}}},scales:{x:{ticks:{color:'#556070',maxTicksLimit:8,font:{family:"'IBM Plex Mono',monospace",size:9}},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#556070',font:{family:"'IBM Plex Mono',monospace",size:9}},grid:{color:'rgba(255,255,255,0.04)'}}}};}
-function barOpts(prefix,showLegend){const o=baseOpts();o.plugins.legend.display=showLegend;o.plugins.tooltip.callbacks={label:ctx=>prefix+fmt2(ctx.parsed.y)};return o;}
+// ── CHART HELPERS ──
+function baseOpts(){
+  return{
+    responsive:true,maintainAspectRatio:false,
+    animation:{duration:500},
+    plugins:{
+      legend:{display:false},
+      tooltip:{backgroundColor:'#131920',borderColor:'rgba(255,255,255,0.08)',borderWidth:1,
+        titleColor:'#dde4ee',bodyColor:'#556070',
+        titleFont:{family:"'IBM Plex Mono',monospace",size:11},
+        bodyFont:{family:"'IBM Plex Mono',monospace",size:11}}
+    },
+    scales:{
+      x:{ticks:{color:'#556070',maxTicksLimit:8,font:{family:"'IBM Plex Mono',monospace",size:9}},grid:{color:'rgba(255,255,255,0.04)'}},
+      y:{ticks:{color:'#556070',font:{family:"'IBM Plex Mono',monospace",size:9}},grid:{color:'rgba(255,255,255,0.04)'}}
+    }
+  };
+}
+function barOpts(prefix,showLegend){
+  const o=baseOpts();
+  o.plugins.legend.display=!!showLegend;
+  o.plugins.tooltip.callbacks={label:ctx=>(prefix||'')+fmt2(ctx.parsed.y)};
+  return o;
+}
 function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
-function showLoading(){removeById('rSpinner');document.getElementById('tabOverview').insertAdjacentHTML('afterbegin','<div id="rSpinner" class="spin-wrap"><div class="spinner"></div></div>');document.getElementById('overviewCharts').style.display='none';}
+
+// ── STATES ──
+function showLoading(){
+  removeById('rSpinner');
+  document.getElementById('tabOverview').insertAdjacentHTML('afterbegin','<div id="rSpinner" class="spin-wrap"><div class="spinner"></div></div>');
+  document.getElementById('overviewCharts').style.display='none';
+  document.getElementById('rEmpty').style.display='none';
+}
 function hideLoading(){removeById('rSpinner');}
 function showErr(msg){removeById('rErr');document.getElementById('tabOverview').insertAdjacentHTML('afterbegin','<div id="rErr" class="err">'+msg+'</div>');}
 function removeById(id){const e=document.getElementById(id);if(e)e.remove();}
+
+// ── UTILS ──
 function sv(id,val){const el=document.getElementById(id);if(el)el.textContent=val;}
 function fmt2(n){return parseFloat(n||0).toFixed(2);}
 function fmtBig(n,dollar=true){if(!n)return'—';const p=dollar?'$':'';if(n>=1e12)return p+(n/1e12).toFixed(2)+'T';if(n>=1e9)return p+(n/1e9).toFixed(2)+'B';if(n>=1e6)return p+(n/1e6).toFixed(2)+'M';return p+n;}
