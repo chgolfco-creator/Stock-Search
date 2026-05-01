@@ -213,18 +213,18 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
             </div>
           </div>
           <div style="position:relative;height:260px;">
-            <canvas id="cPrice"></canvas>
+            <canvas id="cPrice" style="display:block;width:100%;height:260px;"></canvas>
           </div>
         </div>
         <!-- Revenue + EPS side by side -->
         <div class="two-col">
           <div class="card">
             <div class="card-hdr"><div><div class="card-title">Quarterly Revenue</div><div class="card-sub">Last 8 quarters · $B</div></div></div>
-            <div style="position:relative;height:180px;"><canvas id="cRev"></canvas></div>
+            <div style="position:relative;height:180px;"><canvas id="cRev" style="display:block;width:100%;height:180px;"></canvas></div>
           </div>
           <div class="card">
             <div class="card-hdr"><div><div class="card-title">EPS — Actual vs Estimate</div><div class="card-sub" id="epsBeatSub">—</div></div></div>
-            <div style="position:relative;height:180px;"><canvas id="cEps"></canvas></div>
+            <div style="position:relative;height:180px;"><canvas id="cEps" style="display:block;width:100%;height:180px;"></canvas></div>
             <div class="beat-badge" id="beatBadge" style="display:none"></div>
           </div>
         </div>
@@ -237,7 +237,7 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
         <div class="card-hdr">
           <div><div class="card-title">EPS History — Actual vs Estimate</div><div class="card-sub" id="earnSub">—</div></div>
         </div>
-        <div style="position:relative;height:260px;"><canvas id="cEarnBig"></canvas></div>
+        <div style="position:relative;height:260px;"><canvas id="cEarnBig" style="display:block;width:100%;height:260px;"></canvas></div>
         <div class="beat-badge" id="beatBadge2" style="display:none;margin-top:12px"></div>
       </div>
       <div class="card">
