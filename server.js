@@ -54,7 +54,7 @@ app.get('/api/revenue', async (req, res) => {
     const url = `https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=${sym}&apikey=${AV_KEY}`;
     const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
     const data = await r.json();
-    const reports = (data.quarterlyReports || []).slice(0, 8).reverse();
+    const reports = (data.quarterlyReports || data.annualReports || []).slice(0, 8).reverse();
     res.json(reports.map(q => ({
       date: q.fiscalDateEnding,
       revenue: parseInt(q.totalRevenue) || 0,
