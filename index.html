@@ -321,11 +321,13 @@ async function loadAll(sym){
         const d=new Date(r.date); return d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
       });
       const revData=reports.map(r=>r.revenue/1e9);
-      if(!revData.some(v=>v>0))return;
+      if(!revData.some(v=>v>0)){console.log('Revenue: all zeros',revData);return;}
+      console.log('Revenue data ready:',revLabels,revData);
       // Small delay to ensure canvas is visible before Chart.js renders
       setTimeout(()=>{
         destroyChart('cRev');
         const canvas=document.getElementById('cRev');
+        console.log('Canvas found:',!!canvas, canvas?.offsetWidth, canvas?.offsetHeight);
         if(!canvas)return;
         charts['cRev']=new Chart(canvas.getContext('2d'),{
           type:'bar',
