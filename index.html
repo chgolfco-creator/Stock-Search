@@ -145,7 +145,7 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
         <div class="price-chg"><span id="priceChg">—</span><span id="priceChgPct">—</span></div>
         <div class="range-row">
           <button class="rbtn" onclick="changeRange('60',1,this)">1D</button>
-          <button class="rbtn on" onclick="changeRange('D',5,this)">5D</button>
+          <button class="rbtn on" onclick="changeRange('D',30,this)">1M</button>
           <button class="rbtn" onclick="changeRange('D',30,this)">1M</button>
           <button class="rbtn" onclick="changeRange('D',180,this)">6M</button>
           <button class="rbtn" onclick="changeRange('D',365,this)">1Y</button>
@@ -289,7 +289,7 @@ async function loadAll(sym){
       fh('/stock/recommendation?symbol='+sym),
       fh('/stock/earnings?symbol='+sym+'&limit=12'),
       fh('/company-news?symbol='+sym+'&from='+daysAgo(30)+'&to='+today()),
-      fh('/stock/candle?symbol='+sym+'&resolution=D&from='+(Math.floor(Date.now()/1000)-5*86400)+'&to='+Math.floor(Date.now()/1000))
+      fh('/stock/candle?symbol='+sym+'&resolution=D&from='+(Math.floor(Date.now()/1000)-30*86400)+'&to='+Math.floor(Date.now()/1000))
     ]);
 
     hideLoading();
