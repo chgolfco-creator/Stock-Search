@@ -145,7 +145,7 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
         <div class="price-chg"><span id="priceChg">—</span><span id="priceChgPct">—</span></div>
         <div class="range-row">
           <button class="rbtn" onclick="changeRange('60',1,this)">1D</button>
-          <button class="rbtn on" onclick="changeRange('D',30,this)">1M</button>
+          <button class="rbtn on" onclick="changeRange('D',5,this)">5D</button>
           <button class="rbtn" onclick="changeRange('D',30,this)">1M</button>
           <button class="rbtn" onclick="changeRange('D',180,this)">6M</button>
           <button class="rbtn" onclick="changeRange('D',365,this)">1Y</button>
@@ -262,7 +262,7 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
 </div>
 
 <script>
-let ticker=null, curRes='D', curDays=5, charts={};
+let ticker=null, curRes='D', curDays=30, charts={};
 
 // ── SEARCH ──
 document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch();});
@@ -451,23 +451,18 @@ function renderEarnings(earnings){
     type:'bar',data:{labels,datasets},options:barOpts('$',true)
   });
 
-  // Revenue chart - use earnings endpoint quarterly financials
-  // We'll use Finnhub financials for revenue
+  // Revenue chart via our own /api/revenue endpoint
   if(ticker){
-    fh('/stock/financials-reported?symbol='+ticker+'&freq=quarterly').then(fin=>{
-      const reports=(fin.data||[]).slice(0,8).reverse();
-      const revLabels=reports.map(r=>r.startDate||'');
-      const revData=reports.map(r=>{
-        const inc=r.report?.ic||[];
-        const rev=inc.find(i=>i.concept==='Revenues'||i.concept==='RevenueFromContractWithCustomerExcludingAssessedTax'||i.concept==='SalesRevenueNet');
-        return rev?(rev.value/1e9):0;
-      });
+    fetch('/api/revenue?symbol='+ticker).then(r=>r.json()).then(reports=>{
+      if(!reports||!reports.length)return;
+      const revLabels=reports.map(r=>r.date||'');
+      const revData=reports.map(r=>r.revenue/1e9);
       if(revData.some(v=>v>0)){
         destroyChart('cRev');
         charts['cRev']=new Chart(document.getElementById('cRev').getContext('2d'),{
           type:'bar',
           data:{labels:revLabels,datasets:[{label:'Revenue $B',data:revData,backgroundColor:'rgba(47,139,255,0.5)',borderColor:'#2f8bff',borderWidth:1,borderRadius:4}]},
-          options:barOpts('$B')
+          options:barOpts('$',false)
         });
       }
     }).catch(()=>{});
