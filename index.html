@@ -441,22 +441,27 @@ function renderEarnings(earnings){
     type:'bar',data:{labels,datasets},options:barOpts('$',true)
   });
 
-  // Revenue chart via our own /api/revenue endpoint
-  if(ticker){
-    fetch('/api/revenue?symbol='+ticker).then(r=>r.json()).then(reports=>{
-      if(!reports||!reports.length)return;
-      const revLabels=reports.map(r=>r.date||'');
-      const revData=reports.map(r=>r.revenue/1e9);
-      if(revData.some(v=>v>0)){
-        destroyChart('cRev');
-        charts['cRev']=new Chart(document.getElementById('cRev').getContext('2d'),{
-          type:'bar',
-          data:{labels:revLabels,datasets:[{label:'Revenue $B',data:revData,backgroundColor:'rgba(47,139,255,0.5)',borderColor:'#2f8bff',borderWidth:1,borderRadius:4}]},
-          options:barOpts('$',false)
-        });
-      }
-    }).catch(()=>{});
-  }
+  // Revenue chart
+  fetch('/api/revenue?symbol='+sym).then(r=>r.json()).then(reports=>{
+    if(!reports||!reports.length)return;
+    const revLabels=reports.map(r=>{
+      // shorten date: 2024-12-31 -> Dec 24
+      const d=new Date(r.date); return d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+    });
+    const revData=reports.map(r=>r.revenue/1e9);
+    if(revData.some(v=>v>0)){
+      destroyChart('cRev');
+      charts['cRev']=new Chart(document.getElementById('cRev').getContext('2d'),{
+        type:'bar',
+        data:{labels:revLabels,datasets:[{
+          label:'Revenue $B',data:revData,
+          backgroundColor:'rgba(47,139,255,0.55)',
+          borderColor:'#2f8bff',borderWidth:1,borderRadius:5
+        }]},
+        options:barOpts('$B',false)
+      });
+    }
+  }).catch(e=>console.error('Revenue error:',e));
 
   // Earnings table
   const tbody=document.getElementById('earnTbody');
@@ -517,16 +522,37 @@ function baseOpts(){
   return{
     responsive:true,maintainAspectRatio:false,
     animation:{duration:500},
+    interaction:{ mode:'index', intersect:false },
     plugins:{
       legend:{display:false},
-      tooltip:{backgroundColor:'#131920',borderColor:'rgba(255,255,255,0.08)',borderWidth:1,
-        titleColor:'#dde4ee',bodyColor:'#556070',
+      tooltip:{
+        backgroundColor:'#131920',
+        borderColor:'rgba(255,255,255,0.15)',
+        borderWidth:1,
+        titleColor:'#dde4ee',
+        bodyColor:'#05d98b',
         titleFont:{family:"'IBM Plex Mono',monospace",size:11},
-        bodyFont:{family:"'IBM Plex Mono',monospace",size:11}}
+        bodyFont:{family:"'IBM Plex Mono',monospace",size:12,weight:'600'},
+        padding:10,
+        displayColors:false,
+        callbacks:{
+          title:items=>items[0]?.label||'',
+          label:ctx=>'$'+fmt2(ctx.parsed.y)
+        }
+      },
+      crosshair:{
+        line:{color:'rgba(255,255,255,0.15)',width:1},
+      }
     },
     scales:{
-      x:{ticks:{color:'#556070',maxTicksLimit:8,font:{family:"'IBM Plex Mono',monospace",size:9}},grid:{color:'rgba(255,255,255,0.04)'}},
-      y:{ticks:{color:'#556070',font:{family:"'IBM Plex Mono',monospace",size:9}},grid:{color:'rgba(255,255,255,0.04)'}}
+      x:{
+        ticks:{color:'#556070',maxTicksLimit:8,font:{family:"'IBM Plex Mono',monospace",size:9}},
+        grid:{color:'rgba(255,255,255,0.04)'}
+      },
+      y:{
+        ticks:{color:'#556070',font:{family:"'IBM Plex Mono',monospace",size:9},callback:v=>'$'+fmt2(v)},
+        grid:{color:'rgba(255,255,255,0.04)'}
+      }
     }
   };
 }
