@@ -313,6 +313,27 @@ async function loadAll(sym){
     }
     renderEarnings(e);
     renderNews(n);
+
+    // Revenue chart — needs sym so must be called here in loadAll
+    fetch('/api/revenue?symbol='+sym).then(r=>r.json()).then(reports=>{
+      if(!reports||!reports.length)return;
+      const revLabels=reports.map(r=>{
+        const d=new Date(r.date); return d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+      });
+      const revData=reports.map(r=>r.revenue/1e9);
+      if(revData.some(v=>v>0)){
+        destroyChart('cRev');
+        charts['cRev']=new Chart(document.getElementById('cRev').getContext('2d'),{
+          type:'bar',
+          data:{labels:revLabels,datasets:[{
+            label:'Revenue $B',data:revData,
+            backgroundColor:'rgba(47,139,255,0.55)',
+            borderColor:'#2f8bff',borderWidth:1,borderRadius:5
+          }]},
+          options:barOpts('$B',false)
+        });
+      }
+    }).catch(e=>console.error('Revenue error:',e));
   }catch(err){
     hideLoading();
     showErr('Failed: '+err.message);
@@ -378,6 +399,27 @@ function renderPriceChart(data,sym,days){
   sv('priceChartSub',labels[0]+' → '+labels[labels.length-1]+' · '+vals.length+' points');
 
   // Must destroy before getting new context
+  const crosshairPlugin = {
+    id:'crosshair',
+    afterDraw(chart){
+      if(chart.tooltip._active&&chart.tooltip._active.length){
+        const ctx=chart.ctx;
+        const x=chart.tooltip._active[0].element.x;
+        const top=chart.scales.y.top;
+        const bottom=chart.scales.y.bottom;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x,top);
+        ctx.lineTo(x,bottom);
+        ctx.lineWidth=1;
+        ctx.strokeStyle='rgba(255,255,255,0.2)';
+        ctx.setLineDash([4,4]);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  };
+
   destroyChart('cPrice');
   const canvas=document.getElementById('cPrice');
   const ctx=canvas.getContext('2d');
@@ -388,7 +430,8 @@ function renderPriceChart(data,sym,days){
   charts['cPrice']=new Chart(ctx,{
     type:'line',
     data:{labels,datasets:[{data:vals,borderColor:col,backgroundColor:grad,borderWidth:1.5,pointRadius:0,fill:true,tension:0.2,spanGaps:true}]},
-    options:baseOpts()
+    options:baseOpts(),
+    plugins:[crosshairPlugin]
   });
 }
 
@@ -440,28 +483,6 @@ function renderEarnings(earnings){
   charts['cEarnBig']=new Chart(document.getElementById('cEarnBig').getContext('2d'),{
     type:'bar',data:{labels,datasets},options:barOpts('$',true)
   });
-
-  // Revenue chart
-  fetch('/api/revenue?symbol='+sym).then(r=>r.json()).then(reports=>{
-    if(!reports||!reports.length)return;
-    const revLabels=reports.map(r=>{
-      // shorten date: 2024-12-31 -> Dec 24
-      const d=new Date(r.date); return d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
-    });
-    const revData=reports.map(r=>r.revenue/1e9);
-    if(revData.some(v=>v>0)){
-      destroyChart('cRev');
-      charts['cRev']=new Chart(document.getElementById('cRev').getContext('2d'),{
-        type:'bar',
-        data:{labels:revLabels,datasets:[{
-          label:'Revenue $B',data:revData,
-          backgroundColor:'rgba(47,139,255,0.55)',
-          borderColor:'#2f8bff',borderWidth:1,borderRadius:5
-        }]},
-        options:barOpts('$B',false)
-      });
-    }
-  }).catch(e=>console.error('Revenue error:',e));
 
   // Earnings table
   const tbody=document.getElementById('earnTbody');
