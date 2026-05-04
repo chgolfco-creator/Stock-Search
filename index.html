@@ -1,4 +1,4 @@
-]<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -155,10 +155,10 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
         <div class="price-big" id="priceBig">—</div>
         <div class="price-chg"><span id="priceChg">—</span><span id="priceChgPct">—</span></div>
         <div class="range-row">
-          <button class="rbtn" onclick="changeRange(5,this)">5D</button>
-          <button class="rbtn on" onclick="changeRange(30,this)">1M</button>
+          <button class="rbtn" onclick="changeRange(30,this)">1M</button>
+          <button class="rbtn" onclick="changeRange(90,this)">3M</button>
           <button class="rbtn" onclick="changeRange(180,this)">6M</button>
-          <button class="rbtn" onclick="changeRange(365,this)">1Y</button>
+          <button class="rbtn on" onclick="changeRange(365,this)">1Y</button>
           <button class="rbtn" onclick="changeRange(365*3,this)">3Y</button>
           <button class="rbtn" onclick="changeRange(365*5,this)">5Y</button>
         </div>
@@ -281,9 +281,9 @@ function doSearch(){
 }
 
 // ── API ──
-async function fh(endpoint){
-  const r=await fetch('/api/fh?endpoint='+encodeURIComponent(endpoint));
-  if(!r.ok)throw new Error('HTTP '+r.status);
+async function api(path){
+  const r=await fetch(path);
+  if(!r.ok) throw new Error('HTTP '+r.status);
   return r.json();
 }
 
@@ -291,15 +291,16 @@ async function fh(endpoint){
 async function loadAll(sym){
   showLoading();
   try{
-    const [quote,profile,metrics,rec,earnings,news,candle]=await Promise.allSettled([
-      fh('/quote?symbol='+sym),
-      fh('/stock/profile2?symbol='+sym),
-      fh('/stock/metric?symbol='+sym+'&metric=all'),
-      fh('/stock/recommendation?symbol='+sym),
-      fh('/stock/earnings?symbol='+sym+'&limit=12'),
-      fh('/company-news?symbol='+sym+'&from='+daysAgo(30)+'&to='+today()),
-      fetch('/api/chart?symbol='+sym+'&days=30&t='+Date.now()).then(r=>r.json())
+    const [quote,earnings,chart]=await Promise.allSettled([
+      api('/api/quote?symbol='+sym),
+      api('/api/earnings?symbol='+sym),
+      api('/api/chart?symbol='+sym+'&days=365&t='+Date.now())
     ]);
+
+    // Fire these in background
+    api('/api/recommendations?symbol='+sym).then(rec=>renderRatings(rec)).catch(()=>{});
+    api('/api/news?symbol='+sym).then(n=>renderNews(n)).catch(()=>{});
+    api('/api/revenue?symbol='+sym).then(r=>renderRevenue(r)).catch(()=>{});
 
     hideLoading();
     document.getElementById('rEmpty').style.display='none';
@@ -308,48 +309,14 @@ async function loadAll(sym){
     document.getElementById('lData').style.display='block';
 
     const q=quote.status==='fulfilled'?quote.value:{};
-    const p=profile.status==='fulfilled'?profile.value:{};
-    const m=metrics.status==='fulfilled'?(metrics.value?.metric||{}):{};
-    const r=rec.status==='fulfilled'&&Array.isArray(rec.value)&&rec.value.length?rec.value[0]:{};
     const e=earnings.status==='fulfilled'&&Array.isArray(earnings.value)?earnings.value:[];
-    const n=news.status==='fulfilled'&&Array.isArray(news.value)?news.value:[];
-    const c=candle.status==='fulfilled'&&candle.value?.closes?.length>0?candle.value:null;
+    const c=chart.status==='fulfilled'&&chart.value?.closes?.length>0?chart.value:null;
 
-    renderLeft(q,p,m,r,sym);
-    if(c){
-      renderPriceChart(c,sym,30);
-    } else {
-      sv('priceChartSub','No price data available — try a different range');
-    }
+    renderLeft(q,sym);
+    if(c){ renderPriceChart(c,sym,365); }
+    else { sv('priceChartSub','No price data available'); }
     renderEarnings(e);
-    renderNews(n);
 
-    // Revenue chart — needs sym so must be called here in loadAll
-    fetch('/api/revenue?symbol='+sym).then(r=>r.json()).then(reports=>{
-      if(!reports||!reports.length)return;
-      const revLabels=reports.map(r=>{
-        const d=new Date(r.date); return d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
-      });
-      const revData=reports.map(r=>r.revenue/1e9);
-      if(!revData.some(v=>v>0)){console.log('Revenue: all zeros',revData);return;}
-      console.log('Revenue data ready:',revLabels,revData);
-      // Small delay to ensure canvas is visible before Chart.js renders
-      setTimeout(()=>{
-        destroyChart('cRev');
-        const canvas=document.getElementById('cRev');
-        console.log('Canvas found:',!!canvas, canvas?.offsetWidth, canvas?.offsetHeight);
-        if(!canvas)return;
-        charts['cRev']=new Chart(canvas.getContext('2d'),{
-          type:'bar',
-          data:{labels:revLabels,datasets:[{
-            label:'Revenue $B',data:revData,
-            backgroundColor:'rgba(47,139,255,0.55)',
-            borderColor:'#2f8bff',borderWidth:1,borderRadius:5
-          }]},
-          options:barOpts('$B',false)
-        });
-      },300);
-    }).catch(e=>console.error('Revenue error:',e));
   }catch(err){
     hideLoading();
     showErr('Failed: '+err.message);
@@ -358,46 +325,60 @@ async function loadAll(sym){
 }
 
 // ── LEFT ──
-function renderLeft(q,p,m,r,sym){
+function renderLeft(q,sym){
   sv('coIcon',sym.slice(0,2));
-  sv('coName',p.name||sym);
-  sv('coSub',sym+' · '+(p.exchange||'—'));
-  sv('coExch',p.exchange||'—');
-  const cp=q.c||0,prev=q.pc||0,ch=cp-prev,chPct=prev?(ch/prev*100):0,up=ch>=0;
+  sv('coName',q.name||sym);
+  sv('coSub',sym+' · '+(q.exchange||'—'));
+  sv('coExch',q.exchange||'—');
+  const cp=q.price||0,prev=q.prevClose||0,ch=cp-prev,chPct=prev?(ch/prev*100):0,up=ch>=0;
   sv('priceBig','$'+fmt2(cp));
   document.getElementById('priceChg').textContent=(up?'+':'')+fmt2(ch);
   document.getElementById('priceChg').className=up?'up':'dn';
   document.getElementById('priceChgPct').textContent='('+(up?'+':'')+fmt2(chPct)+'%)';
   document.getElementById('priceChgPct').className=up?'up':'dn';
-  sv('sPrice','$'+fmt2(cp));
-  sv('sOpen','$'+fmt2(q.o));
-  sv('sHigh','$'+fmt2(q.h));
-  sv('sLow','$'+fmt2(q.l));
-  sv('s52H',m['52WeekHigh']?'$'+fmt2(m['52WeekHigh']):'—');
-  sv('s52L',m['52WeekLow']?'$'+fmt2(m['52WeekLow']):'—');
-  sv('sMktCap',m.marketCapitalization?fmtBig(m.marketCapitalization*1e6):'—');
-  sv('sPE',m.peBasicExclExtraTTM?fmt2(m.peBasicExclExtraTTM):'—');
-  sv('sPS',m.priceToSalesTTM?fmt2(m.priceToSalesTTM):'—');
-  // REV TTM with YoY change
-  const revTTM = m.revenuePerShareTTM && m.sharesOutstanding ? m.revenuePerShareTTM*m.sharesOutstanding*1e6 : null;
-  const revEl = document.getElementById('sRev');
-  if(revEl) revEl.innerHTML = revTTM ? fmtBig(revTTM) : (m.revenueTTM ? fmtBig(m.revenueTTM) : '—');
-  // EPS TTM with YoY change
-  const epsTTM = m.epsBasicExclExtraTTM || m.epsBasicExclExtraAnnual;
-  const epsEl = document.getElementById('sEPS');
-  if(epsEl){
-    const epsChg = m.epsGrowthTTMYoy;
-    epsEl.innerHTML = epsTTM ? '$'+fmt2(epsTTM)+(epsChg?'<span class="eh-chg '+(epsChg>=0?'up':'dn')+'"> ('+(epsChg>=0?'+':'')+fmt2(epsChg*100)+'%)</span>':'') : '—';
-  }
+  sv('sMktCap',q.mktCap?fmtBig(q.mktCap):'—');
+  sv('sPE',q.pe?fmt2(q.pe):'—');
+  sv('sPS',q.ps?fmt2(q.ps):'—');
+  const revEl=document.getElementById('sRev');
+  if(revEl) revEl.textContent=q.revenue?fmtBig(q.revenue):'—';
+  const epsEl=document.getElementById('sEPS');
+  if(epsEl) epsEl.textContent=q.eps?'$'+fmt2(q.eps):'—';
+  sv('rTarget',q.targetPrice?'$'+fmt2(q.targetPrice):'—');
+  sv('aboutText',q.description?(q.description.slice(0,300)+'…'):'No description available.');
+  sv('aIndustry',q.industry||'—');
+  sv('aEmployees',q.employees?parseInt(q.employees).toLocaleString():'—');
+  const wa=document.getElementById('aWebsite');
+  if(q.website){wa.href=q.website;wa.textContent=q.website.replace('https://','').replace('www.','');}
+}
+
+function renderRatings(r){
+  if(!r||Object.keys(r).length===0)return;
   const sb=r.strongBuy||0,b=r.buy||0,h=r.hold||0,s=r.sell||0,ss=r.strongSell||0,tot=sb+b+h+s+ss||1;
   setBar('rSB','rSBp',sb,tot);setBar('rB','rBp',b,tot);setBar('rH','rHp',h,tot);
   setBar('rS','rSp',s,tot);setBar('rSS','rSSp',ss,tot);
-  sv('rTarget',m.targetPrice?'$'+fmt2(m.targetPrice):'—');
-  sv('aboutText',(p.description||'No description available.').slice(0,300)+'…');
-  sv('aIndustry',p.finnhubIndustry||'—');
-  sv('aEmployees',p.employeeTotal?parseInt(p.employeeTotal).toLocaleString():'—');
-  const wa=document.getElementById('aWebsite');
-  if(p.weburl){wa.href=p.weburl;wa.textContent=p.weburl.replace('https://','').replace('www.','');}
+}
+
+function renderRevenue(reports){
+  if(!reports||!reports.length)return;
+  const revLabels=reports.map(r=>{
+    const d=new Date(r.date); return d.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+  });
+  const revData=reports.map(r=>r.revenue/1e9);
+  if(!revData.some(v=>v>0))return;
+  setTimeout(()=>{
+    destroyChart('cRev');
+    const canvas=document.getElementById('cRev');
+    if(!canvas)return;
+    charts['cRev']=new Chart(canvas.getContext('2d'),{
+      type:'bar',
+      data:{labels:revLabels,datasets:[{
+        label:'Revenue $B',data:revData,
+        backgroundColor:'rgba(47,139,255,0.55)',
+        borderColor:'#2f8bff',borderWidth:1,borderRadius:5
+      }]},
+      options:barOpts('$B',false)
+    });
+  },500);
 }
 
 // ── PRICE CHART ──
@@ -634,13 +615,16 @@ function renderNews(news){
 
 // ── MARKET STRIP ──
 async function loadStrip(){
-  for(const [sym,id] of [['SPY','ms-SPY'],['QQQ','ms-QQQ'],['BINANCE:BTCUSDT','ms-BTC']]){
-    try{
-      const d=await fh('/quote?symbol='+sym);
-      const ch=d.c-d.pc,pct=d.pc?(ch/d.pc*100).toFixed(2):'0.00',up=ch>=0;
+  try{
+    const data=await api('/api/market?symbols=SPY,QQQ,BTC-USD');
+    const map={'SPY':'ms-SPY','QQQ':'ms-QQQ','BTC-USD':'ms-BTC'};
+    for(const [sym,id] of Object.entries(map)){
+      const d=data[sym]||{};
+      const pct=(d.change||0).toFixed(2);
+      const up=(d.change||0)>=0;
       document.getElementById(id).innerHTML='<span class="'+(up?'up':'dn')+'">'+(up?'+':'')+pct+'%</span>';
-    }catch(e){document.getElementById(id).textContent='—';}
-  }
+    }
+  }catch(e){['ms-SPY','ms-QQQ','ms-BTC'].forEach(id=>document.getElementById(id).textContent='—');}
 }
 loadStrip(); setInterval(loadStrip,60000);
 
