@@ -46,6 +46,9 @@ def quote():
             'description': info.get('longBusinessSummary',''),
             'targetPrice': info.get('targetMeanPrice',0),
             'recommendation': info.get('recommendationKey',''),
+            'revenueGrowth': info.get('revenueGrowth',None),
+            'earningsGrowth': info.get('earningsGrowth',None),
+            'epsForward': info.get('forwardEps',None),
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
