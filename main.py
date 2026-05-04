@@ -56,14 +56,13 @@ def chart():
     days = int(request.args.get('days', 365))
     try:
         period_map = {
-            30: ('3mo','1d'),
-            90: ('6mo','1d'),
-            180: ('6mo','1d'),
-            365: ('1y','1d'),
-            365*3: ('5y','1wk'),
-            365*5: ('10y','1wk'),
+            30:    ('3mo',  '1d'),
+            90:    ('6mo',  '1d'),
+            180:   ('6mo',  '1d'),
+            365:   ('1y',   '1d'),
+            365*3: ('5y',   '1wk'),
+            365*5: ('10y',  '1wk'),
         }
-        # find closest period
         closest = min(period_map.keys(), key=lambda k: abs(k-days))
         period, interval = period_map[closest]
         t = yf.Ticker(sym)
@@ -79,18 +78,59 @@ def earnings():
     sym = request.args.get('symbol','').upper()
     try:
         t = yf.Ticker(sym)
-        # Quarterly earnings
-        eq = t.quarterly_earnings
         result = []
-        if eq is not None and not eq.empty:
-            for idx, row in eq.iterrows():
-                result.append({
-                    'period': str(idx),
-                    'actual': round(float(row['Actual']),2) if 'Actual' in row else None,
-                    'estimate': round(float(row['Estimate']),2) if 'Estimate' in row else None,
-                })
+
+        # Try earnings_history first (newer yfinance)
+        try:
+            eh = t.get_earnings_history()
+            if eh is not None and not eh.empty:
+                for _, row in eh.iterrows():
+                    period = str(row.get('period','') or row.get('quarter',''))
+                    actual = row.get('epsActual') or row.get('Actual')
+                    estimate = row.get('epsEstimate') or row.get('Estimate')
+                    result.append({
+                        'period': period,
+                        'actual': round(float(actual),2) if actual is not None else None,
+                        'estimate': round(float(estimate),2) if estimate is not None else None,
+                    })
+        except:
+            pass
+
+        # Fallback: quarterly_earnings
+        if not result:
+            try:
+                eq = t.quarterly_earnings
+                if eq is not None and not eq.empty:
+                    for idx, row in eq.iterrows():
+                        actual = row.get('Actual') or row.get('epsActual')
+                        estimate = row.get('Estimate') or row.get('epsEstimate')
+                        result.append({
+                            'period': str(idx),
+                            'actual': round(float(actual),2) if actual is not None else None,
+                            'estimate': round(float(estimate),2) if estimate is not None else None,
+                        })
+            except:
+                pass
+
+        # Fallback: earnings_dates
+        if not result:
+            try:
+                ed = t.earnings_dates
+                if ed is not None and not ed.empty:
+                    ed = ed.dropna(subset=['EPS Estimate','Reported EPS'])
+                    for idx, row in ed.iterrows():
+                        result.append({
+                            'period': str(idx.date()),
+                            'actual': round(float(row['Reported EPS']),2),
+                            'estimate': round(float(row['EPS Estimate']),2),
+                        })
+                    result = list(reversed(result))
+            except:
+                pass
+
         return jsonify(result)
     except Exception as e:
+        print('Earnings error:', traceback.format_exc())
         return jsonify([])
 
 @app.route('/api/revenue')
@@ -98,31 +138,66 @@ def revenue():
     sym = request.args.get('symbol','').upper()
     try:
         t = yf.Ticker(sym)
-        fin = t.quarterly_financials
         result = []
-        if fin is not None and not fin.empty:
-            rev_row = None
-            for label in ['Total Revenue','Revenue']:
-                if label in fin.index:
-                    rev_row = fin.loc[label]
-                    break
-            ni_row = None
-            for label in ['Net Income','Net Income Common Stockholders']:
-                if label in fin.index:
-                    ni_row = fin.loc[label]
-                    break
-            cols = list(fin.columns[:8])
-            cols.reverse()
-            for col in cols:
-                rev = float(rev_row[col]) if rev_row is not None and col in rev_row.index else 0
-                ni  = float(ni_row[col])  if ni_row  is not None and col in ni_row.index  else 0
-                result.append({
-                    'date': str(col.date()) if hasattr(col,'date') else str(col)[:10],
-                    'revenue': rev,
-                    'netIncome': ni
-                })
+
+        # Try quarterly_financials
+        try:
+            fin = t.quarterly_financials
+            if fin is not None and not fin.empty:
+                rev_row = None
+                for label in ['Total Revenue','Revenue','TotalRevenue']:
+                    if label in fin.index:
+                        rev_row = fin.loc[label]
+                        break
+                ni_row = None
+                for label in ['Net Income','NetIncome','Net Income Common Stockholders']:
+                    if label in fin.index:
+                        ni_row = fin.loc[label]
+                        break
+                cols = list(fin.columns[:8])
+                cols.reverse()
+                for col in cols:
+                    rev = float(rev_row[col]) if rev_row is not None and col in rev_row.index and rev_row[col] == rev_row[col] else 0
+                    ni  = float(ni_row[col])  if ni_row  is not None and col in ni_row.index  and ni_row[col]  == ni_row[col]  else 0
+                    result.append({
+                        'date': str(col.date()) if hasattr(col,'date') else str(col)[:10],
+                        'revenue': rev,
+                        'netIncome': ni
+                    })
+        except Exception as e:
+            print('quarterly_financials error:', e)
+
+        # Fallback: income_stmt
+        if not result:
+            try:
+                fin = t.quarterly_income_stmt
+                if fin is not None and not fin.empty:
+                    rev_row = None
+                    for label in ['Total Revenue','Revenue']:
+                        if label in fin.index:
+                            rev_row = fin.loc[label]
+                            break
+                    ni_row = None
+                    for label in ['Net Income','Net Income Common Stockholders']:
+                        if label in fin.index:
+                            ni_row = fin.loc[label]
+                            break
+                    cols = list(fin.columns[:8])
+                    cols.reverse()
+                    for col in cols:
+                        rev = float(rev_row[col]) if rev_row is not None and col in rev_row.index and rev_row[col]==rev_row[col] else 0
+                        ni  = float(ni_row[col])  if ni_row  is not None and col in ni_row.index  and ni_row[col]==ni_row[col]  else 0
+                        result.append({
+                            'date': str(col.date()) if hasattr(col,'date') else str(col)[:10],
+                            'revenue': rev,
+                            'netIncome': ni
+                        })
+            except Exception as e:
+                print('income_stmt error:', e)
+
         return jsonify(result)
     except Exception as e:
+        print('Revenue error:', traceback.format_exc())
         return jsonify([])
 
 @app.route('/api/recommendations')
@@ -133,15 +208,12 @@ def recommendations():
         rec = t.recommendations
         if rec is None or rec.empty:
             return jsonify({})
-        # get most recent period
-        latest = rec.iloc[-1] if len(rec) else None
-        if latest is None:
-            return jsonify({})
+        latest = rec.iloc[-1]
         return jsonify({
-            'strongBuy': int(latest.get('strongBuy',0)),
-            'buy': int(latest.get('buy',0)),
-            'hold': int(latest.get('hold',0)),
-            'sell': int(latest.get('sell',0)),
+            'strongBuy':  int(latest.get('strongBuy',0)),
+            'buy':        int(latest.get('buy',0)),
+            'hold':       int(latest.get('hold',0)),
+            'sell':       int(latest.get('sell',0)),
             'strongSell': int(latest.get('strongSell',0)),
         })
     except Exception as e:
@@ -155,11 +227,12 @@ def news():
         raw = t.news or []
         result = []
         for n in raw[:20]:
+            ct = n.get('content',{})
             result.append({
-                'title': n.get('title',''),
-                'url': n.get('link',''),
-                'source': n.get('publisher',''),
-                'time': n.get('providerPublishTime',0),
+                'title':  ct.get('title','') or n.get('title',''),
+                'url':    (ct.get('canonicalUrl',{}) or {}).get('url','') or n.get('link',''),
+                'source': (ct.get('provider',{}) or {}).get('displayName','') or n.get('publisher',''),
+                'time':   ct.get('pubDate','') or n.get('providerPublishTime',0),
             })
         return jsonify(result)
     except Exception as e:
@@ -180,6 +253,24 @@ def market():
         except:
             result[sym] = {'price':0,'change':0}
     return jsonify(result)
+
+# Debug endpoint
+@app.route('/api/debug')
+def debug():
+    sym = request.args.get('symbol','AAPL').upper()
+    try:
+        t = yf.Ticker(sym)
+        fin = t.quarterly_financials
+        inc = t.quarterly_income_stmt
+        ed  = t.earnings_dates
+        return jsonify({
+            'fin_index': list(fin.index) if fin is not None and not fin.empty else [],
+            'inc_index': list(inc.index) if inc is not None and not inc.empty else [],
+            'ed_cols':   list(ed.columns) if ed is not None and not ed.empty else [],
+            'ed_rows':   ed.shape[0] if ed is not None else 0,
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 3000))
