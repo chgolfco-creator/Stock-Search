@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+]<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -298,7 +298,7 @@ async function loadAll(sym){
       fh('/stock/recommendation?symbol='+sym),
       fh('/stock/earnings?symbol='+sym+'&limit=12'),
       fh('/company-news?symbol='+sym+'&from='+daysAgo(30)+'&to='+today()),
-      fetch('/api/chart?symbol='+sym+'&days=30').then(r=>r.json())
+      fetch('/api/chart?symbol='+sym+'&days=30&t='+Date.now()).then(r=>r.json())
     ]);
 
     hideLoading();
@@ -404,7 +404,7 @@ function renderLeft(q,p,m,r,sym){
 async function loadPriceChart(sym,days){
   curDays=days;
   try{
-    const data=await fetch('/api/chart?symbol='+sym+'&days='+days).then(r=>r.json());
+    const data=await fetch('/api/chart?symbol='+sym+'&days='+days+'&t='+Date.now()).then(r=>r.json());
     if(!data||!data.closes||data.closes.length===0){
       sv('priceChartSub','No price data available for this range');
       return;
