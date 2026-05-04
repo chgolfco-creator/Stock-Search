@@ -60,6 +60,17 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
 .rbar-fill{height:100%;border-radius:3px;width:0;transition:width .9s cubic-bezier(.4,0,.2,1);}
 .rpct{font-family:var(--mono);font-size:9px;font-weight:700;width:28px;text-align:right;}
 .about-text{font-size:12px;color:var(--muted);line-height:1.6;}
+/* Earnings Hub style stats */
+.stats-eh{display:flex;flex-direction:column;gap:0;}
+.eh-row{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:4px 0;}
+.eh-row:last-child{border-bottom:none;}
+.eh-item{display:flex;align-items:baseline;gap:6px;padding:0 4px;}
+.eh-div{width:1px;height:14px;background:var(--border2);margin:0 6px;}
+.eh-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;}
+.eh-val{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;}
+.eh-chg{font-family:var(--mono);font-size:10px;font-weight:600;}
+.eh-chg.up{color:var(--green);}
+.eh-chg.dn{color:var(--red);}
 .l-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px 20px;text-align:center;}
 .l-empty-icon{font-size:36px;opacity:.25;}
 .l-empty-title{font-size:15px;font-weight:600;opacity:.35;}
@@ -153,20 +164,19 @@ header{height:52px;min-height:52px;background:var(--s1);border-bottom:1px solid 
         </div>
       </div>
       <div class="l-section">
-        <div class="sl">Key Statistics</div>
-        <div class="stats-grid">
-          <div class="stat"><div class="stat-lbl">Price</div><div class="stat-val" id="sPrice">—</div></div>
-          <div class="stat"><div class="stat-lbl">Open</div><div class="stat-val" id="sOpen">—</div></div>
-          <div class="stat"><div class="stat-lbl">High</div><div class="stat-val" id="sHigh">—</div></div>
-          <div class="stat"><div class="stat-lbl">Low</div><div class="stat-val" id="sLow">—</div></div>
-          <div class="stat"><div class="stat-lbl">52W High</div><div class="stat-val" id="s52H">—</div></div>
-          <div class="stat"><div class="stat-lbl">52W Low</div><div class="stat-val" id="s52L">—</div></div>
-          <div class="stat"><div class="stat-lbl">Market Cap</div><div class="stat-val" id="sMktCap">—</div></div>
-          <div class="stat"><div class="stat-lbl">P/E Ratio</div><div class="stat-val" id="sPE">—</div></div>
-          <div class="stat"><div class="stat-lbl">EPS (TTM)</div><div class="stat-val" id="sEPS">—</div></div>
-          <div class="stat"><div class="stat-lbl">Beta</div><div class="stat-val" id="sBeta">—</div></div>
-          <div class="stat"><div class="stat-lbl">Div Yield</div><div class="stat-val" id="sDiv">—</div></div>
-          <div class="stat"><div class="stat-lbl">Shares Out</div><div class="stat-val" id="sShares">—</div></div>
+        <div class="stats-eh">
+          <div class="eh-row">
+            <div class="eh-item"><span class="eh-lbl">Mkt Cap</span><span class="eh-val" id="sMktCap">—</span></div>
+            <div class="eh-div"></div>
+            <div class="eh-item"><span class="eh-lbl">P/E Ratio</span><span class="eh-val" id="sPE">—</span></div>
+            <div class="eh-div"></div>
+            <div class="eh-item"><span class="eh-lbl">P/S Ratio</span><span class="eh-val" id="sPS">—</span></div>
+          </div>
+          <div class="eh-row">
+            <div class="eh-item"><span class="eh-lbl">REV (TTM)</span><span class="eh-val" id="sRev">—</span></div>
+            <div class="eh-div"></div>
+            <div class="eh-item"><span class="eh-lbl">EPS (TTM)</span><span class="eh-val" id="sEPS">—</span></div>
+          </div>
         </div>
       </div>
       <div class="l-section">
@@ -367,10 +377,18 @@ function renderLeft(q,p,m,r,sym){
   sv('s52L',m['52WeekLow']?'$'+fmt2(m['52WeekLow']):'—');
   sv('sMktCap',m.marketCapitalization?fmtBig(m.marketCapitalization*1e6):'—');
   sv('sPE',m.peBasicExclExtraTTM?fmt2(m.peBasicExclExtraTTM):'—');
-  sv('sEPS',m.epsBasicExclExtraAnnual?'$'+fmt2(m.epsBasicExclExtraAnnual):'—');
-  sv('sBeta',m.beta?fmt2(m.beta):'—');
-  sv('sDiv',m.dividendYieldIndicatedAnnual?fmt2(m.dividendYieldIndicatedAnnual)+'%':'N/A');
-  sv('sShares',m.sharesOutstanding?fmtBig(m.sharesOutstanding*1e6,false):'—');
+  sv('sPS',m.priceToSalesTTM?fmt2(m.priceToSalesTTM):'—');
+  // REV TTM with YoY change
+  const revTTM = m.revenuePerShareTTM && m.sharesOutstanding ? m.revenuePerShareTTM*m.sharesOutstanding*1e6 : null;
+  const revEl = document.getElementById('sRev');
+  if(revEl) revEl.innerHTML = revTTM ? fmtBig(revTTM) : (m.revenueTTM ? fmtBig(m.revenueTTM) : '—');
+  // EPS TTM with YoY change
+  const epsTTM = m.epsBasicExclExtraTTM || m.epsBasicExclExtraAnnual;
+  const epsEl = document.getElementById('sEPS');
+  if(epsEl){
+    const epsChg = m.epsGrowthTTMYoy;
+    epsEl.innerHTML = epsTTM ? '$'+fmt2(epsTTM)+(epsChg?'<span class="eh-chg '+(epsChg>=0?'up':'dn')+'"> ('+(epsChg>=0?'+':'')+fmt2(epsChg*100)+'%)</span>':'') : '—';
+  }
   const sb=r.strongBuy||0,b=r.buy||0,h=r.hold||0,s=r.sell||0,ss=r.strongSell||0,tot=sb+b+h+s+ss||1;
   setBar('rSB','rSBp',sb,tot);setBar('rB','rBp',b,tot);setBar('rH','rHp',h,tot);
   setBar('rS','rSp',s,tot);setBar('rSS','rSSp',ss,tot);
