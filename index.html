@@ -607,8 +607,8 @@ function renderNews(news){
   document.getElementById('newsList').innerHTML=news.slice(0,20).map(n=>`
     <div class="news-card">
       <a href="${n.url||'#'}" target="_blank" rel="noopener">
-        <div class="news-ttl">${n.headline||'No title'}</div>
-        <div class="news-meta">${n.source||''} · ${timeAgo(n.datetime)}</div>
+        <div class="news-ttl">${n.title||'No title'}</div>
+        <div class="news-meta">${n.source||''} · ${n.time?timeAgo(typeof n.time==='number'?n.time:Math.floor(new Date(n.time)/1000)):'recently'}</div>
       </a>
     </div>`).join('');
 }
