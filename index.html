@@ -340,9 +340,17 @@ function renderLeft(q,sym){
   sv('sPE',q.pe?fmt2(q.pe):'—');
   sv('sPS',q.ps?fmt2(q.ps):'—');
   const revEl=document.getElementById('sRev');
-  if(revEl) revEl.textContent=q.revenue?fmtBig(q.revenue):'—';
+  if(revEl){
+    const revChg=q.revenueGrowth;
+    const revChgHtml=revChg!=null?` <span class="eh-chg ${revChg>=0?'up':'dn'}">(${revChg>=0?'+':''}${(revChg*100).toFixed(1)}%)</span>`:'';
+    revEl.innerHTML=(q.revenue?fmtBig(q.revenue):'—')+revChgHtml;
+  }
   const epsEl=document.getElementById('sEPS');
-  if(epsEl) epsEl.textContent=q.eps?'$'+fmt2(q.eps):'—';
+  if(epsEl){
+    const epsChg=q.earningsGrowth;
+    const epsChgHtml=epsChg!=null?` <span class="eh-chg ${epsChg>=0?'up':'dn'}">(${epsChg>=0?'+':''}${(epsChg*100).toFixed(1)}%)</span>`:'';
+    epsEl.innerHTML=(q.eps?'$'+fmt2(q.eps):'—')+epsChgHtml;
+  }
   sv('rTarget',q.targetPrice?'$'+fmt2(q.targetPrice):'—');
   sv('aboutText',q.description?(q.description.slice(0,300)+'…'):'No description available.');
   sv('aIndustry',q.industry||'—');
