@@ -463,32 +463,124 @@ function renderEarnings(earnings){
   sorted.forEach((e,i)=>{
     if(act[i]!==null&&est[i]!==null){total++;if(act[i]>=est[i])beats++;}
   });
-  const beatTxt='Beat estimates '+beats+' of '+total+' quarters';
+  const beatTxt='EPS beat estimates '+beats+' times in '+total+' quarters';
   sv('earnSub',beatTxt); sv('epsBeatSub',beatTxt);
   ['beatBadge','beatBadge2'].forEach(id=>{
     const el=document.getElementById(id);
     el.textContent=beatTxt; el.style.display=beats>0?'inline-flex':'none';
   });
 
-  const actColors=act.map((a,i)=>a!==null&&est[i]!==null&&a>=est[i]?'rgba(5,217,139,0.75)':'rgba(240,62,95,0.75)');
-  const actBorder=act.map((a,i)=>a!==null&&est[i]!==null&&a>=est[i]?'#05d98b':'#f03e5f');
+  // Scatter dot data — actual dots colored green/red
+  const actDots=sorted.map((e,i)=>({
+    x:i,
+    y:typeof e.actual==='number'?e.actual:null,
+    beat:act[i]!==null&&est[i]!==null&&act[i]>=est[i],
+    label:e.period,
+    actual:e.actual,
+    estimate:e.estimate
+  })).filter(d=>d.y!==null);
 
-  const datasets=[
-    {label:'Estimate',data:est,backgroundColor:'rgba(245,197,24,0.3)',borderColor:'#f5c518',borderWidth:1,borderRadius:3},
-    {label:'Actual',data:act,backgroundColor:actColors,borderColor:actBorder,borderWidth:1,borderRadius:3}
-  ];
+  // Estimate line dots (grey/faded)
+  const estDots=sorted.map((e,i)=>({
+    x:i,
+    y:typeof e.estimate==='number'?e.estimate:null,
+    label:e.period
+  })).filter(d=>d.y!==null);
 
-  // Mini EPS (overview)
-  destroyChart('cEps');
-  charts['cEps']=new Chart(document.getElementById('cEps').getContext('2d'),{
-    type:'bar',data:{labels,datasets},options:barOpts('$',true)
+  const scatterOpts=(height)=>({
+    responsive:true,
+    maintainAspectRatio:false,
+    animation:{duration:600},
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#1a2230',
+        borderColor:'rgba(5,217,139,0.4)',
+        borderWidth:1,
+        titleColor:'#dde4ee',
+        bodyColor:'#05d98b',
+        titleFont:{family:"'IBM Plex Mono',monospace",size:11,weight:'600'},
+        bodyFont:{family:"'IBM Plex Mono',monospace",size:12,weight:'700'},
+        padding:12,
+        displayColors:false,
+        callbacks:{
+          title:()=>'',
+          label:ctx=>{
+            const d=ctx.raw;
+            if(d.actual!==undefined){
+              return 'EPS for '+d.label+' is $'+fmt2(d.actual);
+            }
+            return 'Est: $'+fmt2(d.y);
+          }
+        }
+      }
+    },
+    scales:{
+      x:{
+        type:'linear',
+        min:-0.5,
+        max:sorted.length-0.5,
+        ticks:{
+          color:'#556070',
+          font:{family:"'IBM Plex Mono',monospace",size:9},
+          callback:(v)=>{
+            const i=Math.round(v);
+            return labels[i]||'';
+          },
+          stepSize:1,
+          maxRotation:45,
+          minRotation:45
+        },
+        grid:{color:'rgba(255,255,255,0.04)'}
+      },
+      y:{
+        ticks:{
+          color:'#556070',
+          font:{family:"'IBM Plex Mono',monospace",size:9},
+          callback:v=>'$'+fmt2(v)
+        },
+        grid:{color:'rgba(255,255,255,0.04)'}
+      }
+    }
   });
 
-  // Big EPS (earnings tab)
-  destroyChart('cEarnBig');
-  charts['cEarnBig']=new Chart(document.getElementById('cEarnBig').getContext('2d'),{
-    type:'bar',data:{labels,datasets},options:barOpts('$',true)
-  });
+  const buildScatterChart=(canvasId,height)=>{
+    destroyChart(canvasId);
+    const canvas=document.getElementById(canvasId);
+    if(!canvas)return;
+    charts[canvasId]=new Chart(canvas.getContext('2d'),{
+      type:'scatter',
+      data:{
+        datasets:[
+          // Estimate dots (small, faded)
+          {
+            label:'Estimate',
+            data:estDots,
+            backgroundColor:'rgba(150,150,150,0.35)',
+            borderColor:'rgba(150,150,150,0.5)',
+            borderWidth:1.5,
+            pointRadius:5,
+            pointHoverRadius:7
+          },
+          // Actual dots (large, green/red)
+          {
+            label:'Actual',
+            data:actDots,
+            backgroundColor:actDots.map(d=>d.beat?'rgba(5,217,139,0.85)':'rgba(240,62,95,0.85)'),
+            borderColor:actDots.map(d=>d.beat?'#05d98b':'#f03e5f'),
+            borderWidth:2,
+            pointRadius:canvasId==='cEarnBig'?9:6,
+            pointHoverRadius:canvasId==='cEarnBig'?12:8,
+            pointStyle:'circle'
+          }
+        ]
+      },
+      options:scatterOpts(height)
+    });
+  };
+
+  buildScatterChart('cEps',180);
+  buildScatterChart('cEarnBig',260);
 
   // Earnings table
   const tbody=document.getElementById('earnTbody');
