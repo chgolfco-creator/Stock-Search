@@ -203,8 +203,47 @@ def revenue():
         print('Revenue error:', traceback.format_exc())
         return jsonify([])
 
-@app.route('/api/recommendations')
-def recommendations():
+@app.route('/api/analysts')
+def analysts():
+    sym = request.args.get('symbol','').upper()
+    try:
+        t = yf.Ticker(sym)
+        result = []
+
+        # Analyst price targets
+        try:
+            upgrades = t.upgrades_downgrades
+            if upgrades is not None and not upgrades.empty:
+                recent = upgrades.head(20).reset_index()
+                for _, row in recent.iterrows():
+                    result.append({
+                        'firm': str(row.get('Firm','')),
+                        'action': str(row.get('Action','')),
+                        'toGrade': str(row.get('ToGrade','')),
+                        'fromGrade': str(row.get('FromGrade','')),
+                        'date': str(row.get('GradeDate','')[:10]) if row.get('GradeDate') else '',
+                    })
+        except Exception as e:
+            print('upgrades error:', e)
+
+        # Analyst price targets table
+        targets = []
+        try:
+            at = t.analyst_price_targets
+            if at is not None:
+                targets = {
+                    'low': at.get('low'),
+                    'high': at.get('high'),
+                    'mean': at.get('mean'),
+                    'median': at.get('median'),
+                    'current': at.get('current'),
+                }
+        except Exception as e:
+            print('analyst_price_targets error:', e)
+
+        return jsonify({'upgrades': result, 'targets': targets})
+    except Exception as e:
+        return jsonify({'upgrades': [], 'targets': {}})
     sym = request.args.get('symbol','').upper()
     try:
         t = yf.Ticker(sym)
